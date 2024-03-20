@@ -1,3 +1,9 @@
+//#pragma GCC optimize("O3")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC optimize("unroll-loops")
+//#pragma GCC target("avx2,bmi,bmi2,lzcnt,popcnt")
+
+
 #include<bits/stdc++.h>
 #include <ext/pb_ds/assoc_container.hpp>
 #include <ext/pb_ds/tree_policy.hpp>
@@ -20,35 +26,41 @@ struct custom_hash {
                 return splitmix64(x + FIXED_RANDOM);
         }
 };
+mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+template<typename T>
+T rand(T a, T b){
+    return uniform_int_distribution<T>(a, b)(rng);
+}
 
 typedef tree<int, null_type, less<int>, rb_tree_tag, tree_order_statistics_node_update> ordered_set;
 typedef tree<pair<int,int>, null_type, less<pair<int,int>>, rb_tree_tag, tree_order_statistics_node_update> ordered_multiset;
+typedef long long ll;
+typedef long double ld;
+typedef vector<ll> vl;
+typedef vector<int> vi;
 
-#define int long long
+
+#define rep(i, a, b) for(int i = a; i < b; i++)
+#define all(x) begin(x), end(x)
 #define sz(x) static_cast<int>((x).size())
+#define int long long
 
-const int mod = 998244353;
-const int INF = 1e18;
+const ll mod = 998244353;
+const ll INF = 1e18;
 
 
 
 /* mint
 int norm (int x) {
-        if (x < 0) {
-                x += mod;
-        }
-        if (x >= mod) {
-                x -= mod;
-        }
+        if (x < 0) x += mod;
+        if (x >= mod) x -= mod;
         return x;
 }
 template<class T>
 T power(T a, int b) {
         T res = 1;
         for (; b; b /= 2, a *= a) {
-                if (b % 2) {
-                res *= a;
-                }
+                if (b & 1) res *= a;
         }
         return res;
 }
@@ -62,7 +74,6 @@ struct Z {
                 return Z(norm(mod - x));
         }
         Z inv() const {
-                assert(x != 0);
                 return power(*this, mod - 2);
         }
         Z &operator*=(const Z &rhs) {
@@ -124,6 +135,19 @@ Z C (int n, int r) {
         ifact[maxn - 1] = Z(1) / fact[maxn - 1]; 
         for (int i = maxn - 2; i >= 0; i--) ifact[i] = ifact[i + 1] * (i + 1); 
 */
+
+Z summation_i_power_k (int n, int k) {
+        if (n == 0) return 0;
+        Z a[k + 3];
+        for (int i = 1; i <= k + 2; i++) a[i] = (a[i - 1] + power(Z(i), k));
+        if (n <= k + 2) return a[n];
+        Z totn = 1, tot = 1, ans = 0;
+        for (int i = 1; i <= k + 2; i++) totn *= (n - i);
+        for (int i = 2; i <= k + 2; i++) tot *= (1 - i);
+        for (int i = 1; i <= k + 2; tot = tot * i / (i - k - 2), i++)
+                ans += a[i] * totn / (n - i) / tot;
+        return ans;
+}
 
 int inversemod998244353 (int n) {
         int b = 1;
@@ -396,16 +420,16 @@ struct SegtreeMm {
 }; */
 
 struct SegtreeSum {
+
         int size;
         vector<int> sums;
         void init(int n) {
                 size = 1;
                 while (size < n) size *= 2;
                 sums.assign(2 * size - 1, 0);
-        }
-        
+        }        
  
-        void build(vector<int> &a, int x, int lx, int rx) {
+        void build (vector<int> &a, int x, int lx, int rx) {
                 if (rx - lx == 1) {
                         if (lx < sz(a)) sums[x] = a[lx];
                         else sums[x] = 0;
@@ -416,52 +440,39 @@ struct SegtreeSum {
                 build(a, 2 * x + 2, m, rx);
                 sums[x] = sums[2 * x + 1] + sums[2 * x + 2];
         }
+
+        void build (vector<int> &a) {
+                build(a, 0, 0, size);
+        }
  
-        void set(int i, int v, int x, int lx, int rx) {
+        void set (int i, int v, int x, int lx, int rx) {
                 if (rx - lx == 1) {
                         sums[x] = v;
                         return;
                 }
                 int m = (lx + rx)/ 2;
-                if (i < m) {
-                        set(i, v, 2 * x + 1, lx, m);
-                } else {
-                        set(i, v, 2 * x + 2, m, rx);
-                }
+                if (i < m) set(i, v, 2 * x + 1, lx, m);
+                else set(i, v, 2 * x + 2, m, rx);
                 sums[x] = sums[2 * x + 1] + sums[2 * x + 2];
         }
-        void set(int i, int v) {
+
+        void set (int i, int v) {
                 set(i, v, 0, 0, size);
         }
  
-        void build(vector<int> &a) {
-                build(a, 0, 0, size);
-        }
-        void out(){
-                cout << sz(sums) << "\n";
-                for(int i = 0; i< sz(sums); i++) cout << sums[i] << " ";
-        }
- 
-        int sum(int l, int r, int x, int lx, int rx) {
-                
+        int sum (int l, int r, int x, int lx, int rx) {                
                 if (lx >= r || l >= rx) return 0;
-                if (rx - lx == 1) {
-                        return sums[x];
-                }
-                if (lx >= l && rx <= r) {
-                        return sums[x];
-                }
+                if (rx - lx == 1) return sums[x];
+                if (lx >= l && rx <= r) return sums[x];
                 int m = (lx + rx) / 2;
                 int s1 = sum(l, r, 2 * x + 1, lx, m);
                 int s2 = sum(l, r, 2 * x + 2, m, rx);
-                return s1 + s2;
-                
+                return s1 + s2;                
         }
  
-        int sum(int l, int r) {
+        int sum (int l, int r) {
                 return sum(l, r, 0, 0, size);
         }
- 
  
 };
 
@@ -875,7 +886,7 @@ inline void merge (node *x) {
         x->val = x->l->val + x->r->val;
 }
 
-void init (node *x, int lx, int rx) {
+void build (node *x, int lx, int rx) {
         if (rx - lx == 1) {
                 x->val = 0;
                 return;
@@ -919,6 +930,99 @@ int get (node *x, int lx, int rx, int k, int cyet) {
         }
 } */
 
+/* Persistent SetSum
+struct node {
+        int l = -1;
+        int r = -1;
+        int val = 0;
+};
+const int maxn = 23e5;
+node st[maxn];
+int cur = 0;
+
+void build (int x, int lx, int rx) {
+        if (rx - lx == 1) return;
+        int m = ((lx + rx) >> 1);
+        st[x].l = cur++;
+        st[x].r = cur++;
+        build(st[x].l, lx, m);
+        build(st[x].r, m, rx);
+}
+
+void add (int x, int y, int lx, int rx, int i) {
+        if (rx <= lx) return;
+        if (rx - lx == 1) {
+                st[x].val = 1;
+                return;
+        }
+        int m = ((lx + rx) >> 1);
+        if (i < m) {
+                st[x].l = cur++;
+                st[x].r = st[y].r;
+                add(st[x].l, st[y].l, lx, m, i);
+        }
+        else {
+                st[x].r = cur++;
+                st[x].l = st[y].l;
+                add(st[x].r, st[y].r, m, rx, i);
+        }
+        st[x].val = st[st[x].r].val + st[st[x].l].val;
+}
+
+int get (int x, int lx, int rx, int l, int r) {
+        if (lx >= r || l >= rx || rx <= lx) return 0;
+        if (rx - lx == 1 || (lx >= l && rx <= r)) return st[x].val;
+        int m = ((lx + rx) >> 1);
+        return get(st[x].l, lx, m, l, r) + get(st[x].r, m, rx, l, r);
+} */
+
+/* Persistent SetMin
+struct node {
+        int l = -1;
+        int r = -1;
+        int val = INF;
+};
+const int maxn = 69e5;
+vector<node> st(maxn);
+int cur = 0;
+
+void build (int x, int lx, int rx) {
+        if (rx - lx == 1) return;
+        int m = ((lx + rx) >> 1);
+        st[x].l = cur++;
+        st[x].r = cur++;
+        build(st[x].l, lx, m);
+        build(st[x].r, m, rx);
+}
+
+void add (int x, int y, int lx, int rx, int i, int j) {
+        if (rx <= lx) return;
+        if (rx - lx == 1) {
+                st[x].val = j;
+                return;
+        }
+        int m = ((lx + rx) >> 1);
+        if (i < m) {
+                st[x].l = cur++;
+                st[x].r = st[y].r;
+                add(st[x].l, st[y].l, lx, m, i, j);
+        }
+        else {
+                st[x].r = cur++;
+                st[x].l = st[y].l;
+                add(st[x].r, st[y].r, m, rx, i, j);
+        }
+        st[x].val = min(st[st[x].r].val, st[st[x].l].val);
+}
+
+int get (int x, int lx, int rx, int l, int r) {
+        if (lx >= r || l >= rx || rx <= lx) return INF;
+        if (rx - lx == 1 || (lx >= l && rx <= r)) return st[x].val;
+        int m = ((lx + rx) >> 1);
+        return min(get(st[x].l, lx, m, l, r), get(st[x].r, m, rx, l, r));
+}
+ */
+
 /* Toposort
 bool f = false;
 void dfsfortopo (int i, int state[], vector<int> &topo, vector<int> adj[]) {
@@ -953,19 +1057,15 @@ void d1 (int x, vector<int> adj[], bool vis[], vector<int> &v) {
         }
         v.push_back(x);
 }
-
 void d2 (int xp, int x, vector<int> radj[], bool vis[], int p[]) {
-        vis[x] = true;
-        p[x] = xp;
+        vis[x] = true; p[x] = xp;
         for (auto u : radj[x]) {
                 if (vis[u]) continue;
                 d2(xp, u, radj, vis, p);
         }
 }
-
 void scc (int n, vector<int> adj[], vector<int> radj[], int p[]) {
-        vector<int> v;
-        bool vis[n] = {0};
+        vector<int> v; bool vis[n] = {0};
         for (int i = 0; i < n; i++) {
                 if (vis[i]) continue;
                 d1 (i, adj, vis, v);
@@ -1324,16 +1424,16 @@ struct Z {
 }; */
 
 /* LCA with sum of values in the path
-void dfsforlca2 (int x, vector<int> adj[], int lv, int lvl[], array<int, 20> p[], int val[], array<int, 20> val1[], bool vis[]) {
+void dfsforlca2 (int x, vector<int> adj[], int lvl[], array<int, 20> p[], int val[], array<int, 20> val1[]) {
         lvl[x] = lv;
         vis[x] = true;
         val1[x][0] = val[x];
         for (int i = 1; i < 20; i++) p[x][i] = p[p[x][i - 1]][i - 1];
         for (int i = 1; i < 20; i++) val1[x][i] = val1[p[x][i - 1]][i - 1] + val1[x][i - 1];
         for (auto u : adj[x]) {
-                if (vis[u]) continue;
-                p[u][0] = x;
-                dfsforlca2 (u, adj, lv + 1, lvl, p, val, val1, vis);
+                if (lvl[u] > 0) continue;
+                p[u][0] = x, lvl[u] = lvl[x] + 1;
+                dfsforlca2 (u, adj, lvl, p, val, val1);
         }
 }
 
@@ -1363,11 +1463,11 @@ int getlca2 (int x, int y, int lvl[], array<int, 20> p[], int val[], array<int, 
 } */
 
 /* DSU
-int get (int x, int p[]) {
+int get (int x, vector<int> &p) {
         return p[x] = (x == p[x] ? x : get(p[x], p));
 }
 
-void merge (int x, int y, int p[], int sz[]) {
+void merge (int x, int y, vector<int> &p, vector<int> &sz) {
         x = get(x, p), y = get(y, p);
         if (x == y) return;
         if (sz[x] < sz[y]) swap(x, y);
@@ -1687,6 +1787,159 @@ vd conv(const vd& a, const vd& b) {
         return res;
 }
 */
+
+/* mod fft
+https://github.com/simonlindholm/fft-precision/blob/master/fft-precision.md)
+#pragma once
+
+#include "FastFourierTransform.h"
+
+typedef vector<ll> vl;
+template<int M> vl convMod(const vl &a, const vl &b) {
+	if (a.empty() || b.empty()) return {};
+	vl res(sz(a) + sz(b) - 1);
+	int B=32-__builtin_clz(sz(res)), n=1<<B, cut=int(sqrt(M));
+	vector<C> L(n), R(n), outs(n), outl(n);
+	rep(i,0,sz(a)) L[i] = C((int)a[i] / cut, (int)a[i] % cut);
+	rep(i,0,sz(b)) R[i] = C((int)b[i] / cut, (int)b[i] % cut);
+	fft(L), fft(R);
+	rep(i,0,n) {
+		int j = -i & (n - 1);
+		outl[j] = (L[i] + conj(L[j])) * R[i] / (2.0 * n);
+		outs[j] = (L[i] - conj(L[j])) * R[i] / (2.0 * n) / 1i;
+	}
+	fft(outl), fft(outs);
+	rep(i,0,sz(res)) {
+		ll av = ll(real(outl[i])+.5), cv = ll(imag(outs[i])+.5);
+		ll bv = ll(imag(outl[i])+.5) + ll(real(outs[i])+.5);
+		res[i] = ((av % M * cut + bv) % M * cut + cv) % M;
+	}
+	return res;
+} */
+
+/* Geometry
+
+const ld eps = 1e-9;
+
+struct point {
+        ld x = 0;
+        ld y = 0;
+        point (ld x = 0, ld y = 0) : x(x), y(y) {}
+
+        point &operator += (const point& other) {
+                x += other.x; y += other.y; return *this;
+        }
+        point &operator -= (const point& other) {
+                x -= other.x; y -= other.y; return *this;
+        }
+        point &operator /= (const ld& factor) {
+                x /= factor; y /= factor; return *this;
+        }
+        point &operator *= (const ld& factor) {
+                x *= factor; y *= factor; return *this;
+        }
+        friend bool operator == (const point &lhs, const point &rhs) {
+                return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps;
+        }
+        friend point operator / (const point &lhs, const ld &rhs) {
+                point res = lhs;
+                res /= rhs;
+                return res;
+        }
+        friend point operator * (const point &lhs, const ld &rhs) {
+                point res = lhs;
+                res *= rhs;
+                return res;
+        }
+        friend point operator + (const point &lhs, const point &rhs) {
+                point res = lhs;
+                res += rhs;
+                return res;
+        }
+        friend point operator - (const point &lhs, const point &rhs) {
+                point res = lhs;
+                res -= rhs;
+                return res;
+        }
+        ld mod () {
+                return sqrtl(x * x + y * y);
+        }
+        friend ostream &operator<<(ostream &os, const point &a) {
+                return os << a.x << " " << a.y;
+        }
+};
+
+point anglebisector_vector (point x, point y) {  // vector towards bisector of 2 vectors
+        x /= x.mod();
+        y /= y.mod();
+        point res = (x + y) / 2;
+        res /= res.mod();
+        return res;
+}
+
+ld crossp (point x, point y) {            // cross product of vectors 
+        return x.x * y.y - x.y * y.x;     // negative if y lies to the right of x, otherwise positive
+}
+
+ld dist (point a, point b) {             
+        b -= a;
+        return b.mod();
+}
+ld dist (point a, point b, point x) {    // distance between point x and line segment joining a and b
+
+        point dr1 = b - a;
+        point dr2(dr1.y, -dr1.x);
+        ld x1 = crossp(dr2, b - x), x2 = crossp(dr2, a - x);
+        if (x1 * x2 > -eps) return min(dist(a, x), dist(b, x));
+
+        return abs(((x.x - a.x) * (b.y - a.y) - (x.y - a.y) * (b.x - a.x)) / sqrtl((b.y - a.y) * (b.y - a.y) + (b.x - a.x) * (b.x - a.x)));
+
+}
+
+bool point_inside_polygon (point x, vector<point> p) {  //p is polygon, check if x lies inside p
+        int c = 0;
+        int n = sz(p);
+        for (int i = 0; i < n; i++) {
+                if (x == p[i]) return 0;
+                int j = (i + 1) % n;
+                if (abs(p[i].y - x.y) < eps && abs(p[j].y - x.y) < eps) {
+                        if (min(p[i].x, p[j].x) < x.x + eps && max(p[i].x, p[j].x) > x.x - eps) return 0;
+                        continue;
+                }
+                if (p[i].y > x.y - eps && p[j].y > x.y - eps) continue;
+                if (p[i].y < x.y + eps && p[j].y < x.y + eps) continue;
+                ld f1 = crossp(p[i] - x, p[j] - p[i]);
+                if (abs(f1) < eps) return 0;
+                ld f2 = p[j].y - p[i].y;
+                if (f1 * f2 < 0) c += 1;
+        }
+        return c & 1;
+} */
+
+/* STACKSIZE 
+void main_() {
+    // implement your solution here
+}
+
+static void run_with_stack_size(void (*func)(void), size_t stsize) {
+    char *stack, *send;
+    stack = (char *)malloc(stsize);
+    send = stack + stsize - 16;
+    send = (char *)((uintptr_t)send / 16 * 16);
+    asm volatile(
+        "mov %%rsp, (%0)\n"
+        "mov %0, %%rsp\n"
+        :
+        : "r"(send));
+    func();
+    asm volatile("mov (%0), %%rsp\n" : : "r"(send));
+    free(stack);
+}
+
+run_with_stack_size(main_, 1024 * 1024 * 1024);   //inside main
+*/
+
+//7, 9, 21, 33, 87
 
 signed main(){
 
